@@ -27,6 +27,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -39,6 +40,9 @@ type Endpoint struct {
 	Response []byte
 }
 
+// Maps sanitized request hashes to API endpoint mocks
+var endpointMap = make(map[string]*Endpoint)
+
 // Everything that contains dates or randomized data...
 var httpHeaderBlacklist = []string{
 	"user-agent:",
@@ -47,41 +51,31 @@ var httpHeaderBlacklist = []string{
 	"x-powered-by:",
 	"expires:",
 	"host:",
-	"user-agent:",
 	"content-length:",
 }
 
-func containsBlacklistedHeader(text string) bool {
-	lowerText := strings.ToLower(text)
+// We'll use this to create a bunch of regexen to match against...
+var httpHeaderBlacklistRegexen = make([]*regexp.Regexp, len(httpHeaderBlacklist), len(httpHeaderBlacklist))
 
-	// Building up a prefix tree would be better, but this is Q'n'D :-)
+func compileHttpHeaderBlacklistRegexen() {
 	for i := 0; i < len(httpHeaderBlacklist); i++ {
-		if strings.Contains(lowerText, httpHeaderBlacklist[i]) {
-			return true
-		}
+		s := "(?i)" + httpHeaderBlacklist[i] + " .*\n"
+		re := regexp.MustCompile(s)
+		log.Printf("New HTTP header filter regexp: %s", re)
+		httpHeaderBlacklistRegexen[i] = re
 	}
-	return false
 }
 
-// Maps sanitized request hashes to API endpoint mocks
-var endpointMap = make(map[string]*Endpoint)
-
-// Strips HTTP body and known-bad HTTP headers, return sha1 hash
-func hashSanitizedHttpRequest(request string) string {
-	h := sha1.New()
-	lines := strings.Split(request, "\n")
-	log.Printf("Sanitizing request:\n")
-	for i := 0; i < len(lines); i++ {
-		line := lines[i]
-		if !containsBlacklistedHeader(line) {
-			// Header not blacklisted, append to buffer...
-			h.Write([]byte(line))
-			h.Write([]byte("\n"))
-			fmt.Printf("%s\n", line)
-		}
+// Strips known-bad HTTP headers, return sha1 hash
+func hashSanitizedHttpRequest(request string) (string, string) {
+	result := request
+	for i := 0; i < len(httpHeaderBlacklistRegexen); i++ {
+		re := httpHeaderBlacklistRegexen[i]
+		result = re.ReplaceAllString(result, "")
 	}
-
-	return fmt.Sprintf("%x", h.Sum(nil))
+	sum := sha1.Sum([]byte(result))
+	log.Printf("Sanitized request mock (%x):\n%s", sum, result)
+	return fmt.Sprintf("%x", sum), result
 }
 
 // Loads a request / response test case pair from our backing store
@@ -94,9 +88,9 @@ func loadTestCase(requestFile string, responseFile string) {
 	// e.g. "GET /index.html HTTP/1.1" will yield "/index.html". That's all we need
 	route := strings.SplitN(request, " ", 3)[1]
 	name := strings.TrimSuffix(path.Base(requestFile), ".request")
-	hash := hashSanitizedHttpRequest(request)
+	hash, _ := hashSanitizedHttpRequest(request)
 
-	log.Printf("Mock route: %s case: %s (hash: %s)\n", route, name, hash)
+	log.Printf("Mock route: %s %s (%s)\n", route, name, hash)
 
 	endpointMap[hash] = &Endpoint{Route: route, Name: name, Response: responseBytes}
 }
@@ -149,9 +143,7 @@ func recoverHandler(next http.Handler) http.Handler {
 
 func mockHandler(w http.ResponseWriter, r *http.Request) {
 	rawRequest, _ := httputil.DumpRequest(r, true)
-	incommingHash := hashSanitizedHttpRequest(string(rawRequest))
-
-	log.Printf("Incomming hash: %s", incommingHash)
+	incommingHash, cleanRequest := hashSanitizedHttpRequest(string(rawRequest))
 
 	if endpoint, ok := endpointMap[incommingHash]; ok {
 		w.Write(endpoint.Response)
@@ -160,20 +152,23 @@ func mockHandler(w http.ResponseWriter, r *http.Request) {
 
 	// No endpoint found, return index instead of 404
 	fmt.Fprintf(w, "Mockingbird - Generic HTTP API mocking framework\n\n")
-	fmt.Fprintf(w, "No mock found for request (%s): \n\n%s\n\n", incommingHash, rawRequest)
+	fmt.Fprintf(w, "No mock found for request (%s):\n---\n%s---\n", incommingHash, cleanRequest)
 	fmt.Fprintf(w, "Available mocks:\n\n")
 	for hash, endpoint := range endpointMap {
-		fmt.Fprintf(w, "%s case: %s (hash: %s)\n", endpoint.Route, endpoint.Name, hash)
+		fmt.Fprintf(w, "%s %s (%s)\n", endpoint.Route, endpoint.Name, hash)
 	}
 }
 
 func main() {
 	flag.Parse()
 
+	compileHttpHeaderBlacklistRegexen()
+
 	rootDir := "endpoints" // Our test case backing store
 	filepath.Walk(rootDir, discoverTestCases)
 
 	commonHandlers := alice.New(loggingHandler, recoverHandler)
 	http.Handle("/", commonHandlers.ThenFunc(mockHandler))
+	log.Printf("Initialization done...\n")
 	http.ListenAndServe(":8080", nil)
 }
