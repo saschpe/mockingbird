@@ -70,6 +70,7 @@ var endpointMap = make(map[string]*Endpoint)
 func hashSanitizedHttpRequest(request string) string {
 	h := sha1.New()
 	lines := strings.Split(request, "\n")
+	log.Printf("Sanitizing request:\n")
 	for i := 0; i < len(lines); i++ {
 		line := lines[i]
 		if !containsBlacklistedHeader(line) {
