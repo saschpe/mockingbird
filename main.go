@@ -1,11 +1,9 @@
+// Mockingbird - Generic HTTP API mocking framework
 //
-// Generic HTTP API Endpoint mocking framework
-//
-// Copyright (c) Sascha Peilicke
+// Copyright 2015 (c) Sascha Peilicke
 //
 // Has a 'database' of request / response pairs which you are free to call 'test
-// cases'. Real requests against the API mock are matched against those cases in
-// a clever way:
+// cases'. Real requests against the API mock are matched against those cases:
 //
 // All volatile HTTP headers are stripped (like User-Agent, Date,
 // If-Modified-Since, ...). Sanitized requests are then hashed and compared
@@ -22,10 +20,10 @@ import (
 	"crypto/sha1"
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"path"
 	"path/filepath"
@@ -36,39 +34,53 @@ import (
 )
 
 type Endpoint struct {
-	Route    string // Human-readable API route (just for the purpose of printing)
 	Name     string
-	Request  []byte
+	Route    string // Human-readable API route (just for the purpose of printing)
 	Response []byte
 }
 
 // Everything that contains dates or randomized data...
-var httpHeaderBlacklist = map[string]int{
-	"user-agent":        1,
-	"date":              1,
-	"if-modified-since": 1,
-	"x-powered-by":      1,
-	"expires":           1,
+var httpHeaderBlacklist = []string{
+	"user-agent:",
+	"date:",
+	"if-modified-since:",
+	"x-powered-by:",
+	"expires:",
+	"host:",
+	"user-agent:",
+	"content-length:",
+}
+
+func containsBlacklistedHeader(text string) bool {
+	lowerText := strings.ToLower(text)
+
+	// Building up a prefix tree would be better, but this is Q'n'D :-)
+	for i := 0; i < len(httpHeaderBlacklist); i++ {
+		if strings.Contains(lowerText, httpHeaderBlacklist[i]) {
+			return true
+		}
+	}
+	return false
 }
 
 // Maps sanitized request hashes to API endpoint mocks
-var testSuite map[string]Endpoint
+var endpointMap = make(map[string]*Endpoint)
 
 // Strips HTTP body and known-bad HTTP headers, return sha1 hash
-func hashHttpHeaders(httpAnything string) []byte {
-	hash := sha1.New()
-
-	// Kill HTTP body and have a nice header array left...
-	headerList := strings.Split(strings.SplitN(httpAnything, "\n\n", 2)[0], "\n")
-	for i := 0; i < len(headerList); i++ {
-		header := headerList[i]
-		if _, ok := httpHeaderBlacklist[header]; !ok {
+func hashSanitizedHttpRequest(request string) string {
+	h := sha1.New()
+	lines := strings.Split(request, "\n")
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
+		if !containsBlacklistedHeader(line) {
 			// Header not blacklisted, append to buffer...
-			io.WriteString(hash, header)
+			h.Write([]byte(line))
+			h.Write([]byte("\n"))
+			fmt.Printf("%s\n", line)
 		}
 	}
 
-	return hash.Sum(nil)
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 // Loads a request / response test case pair from our backing store
@@ -79,20 +91,18 @@ func loadTestCase(requestFile string, responseFile string) {
 
 	// Retrieve HTTP request route by splitting twice and return the 2nd element
 	// e.g. "GET /index.html HTTP/1.1" will yield "/index.html". That's all we need
-	route := strings.SplitN(request, " ", 2)[1]
+	route := strings.SplitN(request, " ", 3)[1]
 	name := strings.TrimSuffix(path.Base(requestFile), ".request")
-	hash := string(hashHttpHeaders(request))
+	hash := hashSanitizedHttpRequest(request)
 
-	fmt.Println("Adding %s %s (%s)\n", route, name, hash)
+	log.Printf("Mock route: %s case: %s (hash: %s)\n", route, name, hash)
 
-	testSuite[hash] = Endpoint{Route: route, Name: name, Request: requestBytes, Response: responseBytes}
+	endpointMap[hash] = &Endpoint{Route: route, Name: name, Response: responseBytes}
 }
 
 var currentRequestFile string // TODO: Hide in closure
 // Discovers request / response test cases
 func discoverTestCases(path string, f os.FileInfo, err error) error {
-	fmt.Printf("Visited: %s\n", path)
-
 	if strings.HasSuffix(path, ".request") {
 		currentRequestFile = path
 	} else if strings.HasSuffix(path, ".response") {
@@ -136,28 +146,33 @@ func recoverHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-// Default handler returns Routes dictionary
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Generic HTTP API Endpoint mocking framework\n\n")
-	fmt.Fprintf(w, "The following API routes are known:\n\n")
-	for hash, endpoint := range testSuite {
-		fmt.Println("%s %s (%s)", endpoint.Route, endpoint.Name, hash)
+func mockHandler(w http.ResponseWriter, r *http.Request) {
+	rawRequest, _ := httputil.DumpRequest(r, true)
+	incommingHash := hashSanitizedHttpRequest(string(rawRequest))
+
+	log.Printf("Incomming hash: %s", incommingHash)
+
+	if endpoint, ok := endpointMap[incommingHash]; ok {
+		w.Write(endpoint.Response)
+		return
+	}
+
+	// No endpoint found, return index instead of 404
+	fmt.Fprintf(w, "Mockingbird - Generic HTTP API mocking framework\n\n")
+	fmt.Fprintf(w, "No mock found for request (%s): \n\n%s\n\n", incommingHash, rawRequest)
+	fmt.Fprintf(w, "Available mocks:\n\n")
+	for hash, endpoint := range endpointMap {
+		fmt.Fprintf(w, "%s case: %s (hash: %s)\n", endpoint.Route, endpoint.Name, hash)
 	}
 }
 
 func main() {
 	flag.Parse()
 
-	testSuite = make(map[string]Endpoint)
-
 	rootDir := "endpoints" // Our test case backing store
-	err := filepath.Walk(rootDir, discoverTestCases)
-	fmt.Println(err)
+	filepath.Walk(rootDir, discoverTestCases)
 
-	//commonHandlers := alice.New(loggingHandler, recoverHandler)
-	//http.HandleFunc("/", commonHandlers.ThenFunc(indexHandler))
-	//http.ListenAndServe(":8080", nil)
-
-	chain := alice.New(loggingHandler, recoverHandler).ThenFunc(indexHandler)
-	http.ListenAndServe(":8080", chain)
+	commonHandlers := alice.New(loggingHandler, recoverHandler)
+	http.Handle("/", commonHandlers.ThenFunc(mockHandler))
+	http.ListenAndServe(":8080", nil)
 }
