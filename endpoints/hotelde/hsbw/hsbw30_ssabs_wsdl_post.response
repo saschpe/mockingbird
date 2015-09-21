@@ -1,0 +1,9 @@
+HTTP/1.1 415 Cannot process the message because the content type 'application/x-www-form-urlencoded' was not the expected type 'application/soap+xml; charset=utf-8'.
+Cache-Control: private
+P3P: CP="CAO PSA OUR"
+Date: Mon, 21 Sep 2015 07:28:13 GMT
+Expires: Mon, 21 Sep 2015 07:29:05 GMT
+Edge-control: no-store
+X-Powered-By: |tsF3.154|private|Mon, 21 Sep 2015 07:29:05 GMT|AkaNoStoreNoExpiry|origCacheCtrlHeader: 
+Content-Length: 0
+

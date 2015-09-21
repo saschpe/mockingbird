@@ -1,0 +1,5 @@
+GET /V3_0/OTA2012A/HTNG_SeamlessShopAndBookService.svc HTTP/1.1
+Host: betaappservices.hotel.de
+User-Agent: curl/7.43.0
+Accept: */*
+

@@ -1,0 +1,254 @@
+HTTP/1.1 200 OK
+Cache-Control: public
+Content-Type: text/xml
+P3P: CP="CAO PSA OUR"
+Date: Mon, 21 Sep 2015 07:26:52 GMT
+Expires: Tue, 20 Sep 2016 07:27:45 GMT
+Accept-Ranges: bytes
+Last-Modified: Thu, 13 Aug 2015 09:21:40 GMT
+X-Powered-By: |tsF3.154|public|Tue, 20 Sep 2016 07:27:45 GMT|AkaEnable|origCacheCtrlHeader: |int:31536000
+Content-Length: 8878
+
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions 
+  name="HTNG_SeamlessShopAndBookService"
+  targetNamespace="http://htng.org/2010A"
+  xmlns:tns="http://htng.org/2010A"
+  xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:ota="http://www.opentravel.org/OTA/2003/05"
+  xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/"
+  xmlns:ns="http://schemas.xmlsoap.org/soap/encoding/"
+  xmlns:soap11="http://schemas.xmlsoap.org/wsdl/soap/"
+  xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy"
+  xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+  
+  <!-- Policy -->
+  <wsp:Policy wsu:Id="Shopping_policy">
+    <wsp:ExactlyOne>
+      <wsp:All>
+        <sp:TransportBinding xmlns:sp="http://schemas.xmlsoap.org/ws/2005/07/securitypolicy">
+          <wsp:Policy>
+            <sp:TransportToken>
+              <wsp:Policy>
+                <sp:HttpsToken RequireClientCertificate="false"/>
+              </wsp:Policy>
+            </sp:TransportToken>
+            <sp:AlgorithmSuite>
+              <wsp:Policy>
+                <sp:Basic256/>
+              </wsp:Policy>
+            </sp:AlgorithmSuite>
+            <sp:Layout>
+              <wsp:Policy>
+                <sp:Lax/>
+              </wsp:Policy>
+            </sp:Layout>
+            <sp:IncludeTimestamp/>
+          </wsp:Policy>
+        </sp:TransportBinding>
+        <sp:SignedSupportingTokens xmlns:sp="http://schemas.xmlsoap.org/ws/2005/07/securitypolicy">
+          <wsp:Policy>
+            <sp:UsernameToken sp:IncludeToken="http://schemas.xmlsoap.org/ws/2005/07/securitypolicy/IncludeToken/AlwaysToRecipient">
+              <wsp:Policy>
+                <sp:WssUsernameToken10/>
+              </wsp:Policy>
+            </sp:UsernameToken>
+          </wsp:Policy>
+        </sp:SignedSupportingTokens>
+        <sp:Wss10 xmlns:sp="http://schemas.xmlsoap.org/ws/2005/07/securitypolicy">
+          <wsp:Policy>
+            <sp:MustSupportRefKeyIdentifier/>
+            <sp:MustSupportRefIssuerSerial/>
+          </wsp:Policy>
+        </sp:Wss10>
+      </wsp:All>
+    </wsp:ExactlyOne>
+  </wsp:Policy>
+  
+  <!-- Types -->
+  <wsdl:types>
+    <xs:schema>
+      <xs:import namespace="http://www.opentravel.org/OTA/2003/05" schemaLocation="HDE_OTA_SeamlessShopAndBookService.xsd"/>
+    </xs:schema>
+  </wsdl:types>
+
+  <!-- Avail Messages -->
+  <wsdl:message name="HDE_HotelAvailRQ">
+    <wsdl:part name="OTA_HotelAvailRQ" element="ota:OTA_HotelAvailRQ"/>
+  </wsdl:message>
+  <wsdl:message name="HDE_HotelAvailRS">
+    <wsdl:part name="OTA_HotelAvailRS" element="ota:OTA_HotelAvailRS"/>
+  </wsdl:message>
+
+  <!-- Res Messages  -->
+  <wsdl:message name="HDE_HotelResRQ">
+    <wsdl:part name="OTA_HotelResRQ" element="ota:OTA_HotelResRQ"/>
+  </wsdl:message>
+  <wsdl:message name="HDE_HotelResRS">
+    <wsdl:part name="OTA_HotelResRS" element="ota:OTA_HotelResRS"/>
+  </wsdl:message>
+  
+    <!-- Cancel Messages  -->
+  <wsdl:message name="HDE_CancelRQ">
+    <wsdl:part name="OTA_CancelRQ" element="ota:OTA_CancelRQ"/>
+  </wsdl:message>
+  <wsdl:message name="HDE_CancelRS">
+    <wsdl:part name="OTA_CancelRS" element="ota:OTA_CancelRS"/>
+  </wsdl:message>
+
+  <!-- Fault Message -->
+  <wsdl:message name="HDE_ErrorRS">
+    <wsdl:part name="OTA_ErrorRS" element="ota:OTA_ErrorRS"/>
+  </wsdl:message>
+  
+  <!-- Port Types -->
+  <wsdl:portType name="SeamlessShopAndBook">
+    
+    <wsdl:operation name="CheckAvailability">
+      <wsdl:input name="HDE_HotelAvailRQ" message="tns:HDE_HotelAvailRQ"/>
+      <wsdl:output name="HDE_HotelAvailRS" message="tns:HDE_HotelAvailRS"/>
+      <wsdl:fault name="HDE_ErrorRS" message="tns:HDE_ErrorRS"/>
+    </wsdl:operation>
+
+    <wsdl:operation name="ProcessReservationRequest">
+      <wsdl:input name="HDE_HotelResRQ" message="tns:HDE_HotelResRQ"/>
+      <wsdl:output name="HDE_HotelResRS" message="tns:HDE_HotelResRS"/>
+      <wsdl:fault name="HDE_ErrorRS" message="tns:HDE_ErrorRS"/>
+    </wsdl:operation>
+
+    <wsdl:operation name="ProcessCancelRequest">
+      <wsdl:input name="HDE_CancelRQ" message="tns:HDE_CancelRQ"/>
+      <wsdl:output name="HDE_CancelRS" message="tns:HDE_CancelRS"/>
+      <wsdl:fault name="HDE_ErrorRS" message="tns:HDE_ErrorRS"/>
+    </wsdl:operation>
+
+    <!--<wsdl:operation name="RetrieveReservations">
+      <wsdl:input message="tns:OTA_ReadRQ"/>
+      <wsdl:output message="tns:OTA_ResRetrieveRS"/>
+      <wsdl:fault name="HDE_ErrorRS" message="tns:HDE_ErrorRS"/>
+    </wsdl:operation>-->
+  </wsdl:portType>
+  
+  <!-- Binding for Soap 1.1 -->
+  <wsdl:binding name="SeamlessShopAndBookPortBinding_SOAP11" type="tns:SeamlessShopAndBook">
+    <wsp:PolicyReference URI="#Shopping_policy"/>
+    <soap11:binding transport="http://schemas.xmlsoap.org/soap/http"/>
+    
+    <wsdl:operation name="CheckAvailability">
+      <soap11:operation soapAction="http://htng.org/2010A/HTNG_SeamlessShopAndBookService#CheckAvailability" style="document"/>
+      <wsdl:input name="HDE_HotelAvailRQ">
+        <soap11:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="HDE_HotelAvailRS">
+        <soap11:body use="literal"/>
+      </wsdl:output>
+      <wsdl:fault name="HDE_ErrorRS">
+        <soap11:body use="literal"/>
+      </wsdl:fault>
+    </wsdl:operation>
+
+    <wsdl:operation name="ProcessReservationRequest">
+      <soap11:operation soapAction="http://htng.org/2010A/HTNG_SeamlessShopAndBookService#ProcessReservationRequest" style="document"/>
+      <wsdl:input name="HDE_HotelResRQ">
+        <soap11:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="HDE_HotelResRS">
+        <soap11:body use="literal"/>
+      </wsdl:output>
+      <wsdl:fault name="HDE_ErrorRS">
+        <soap11:body use="literal"/>
+      </wsdl:fault>
+    </wsdl:operation>
+    
+    <wsdl:operation name="ProcessCancelRequest">
+      <soap11:operation soapAction="http://htng.org/2010A/HTNG_SeamlessShopAndBookService#ProcessCancelRequest" style="document"/>
+      <wsdl:input name="HDE_CancelRQ">
+        <soap11:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="HDE_CancelRS">
+        <soap11:body use="literal"/>
+      </wsdl:output>
+      <wsdl:fault name="HDE_ErrorRS">
+        <soap11:body use="literal"/>
+      </wsdl:fault>
+    </wsdl:operation>
+
+    <!--<wsdl:operation name="RetrieveReservations">
+      <soap11:operation soapAction="http://htng.org/2010A/HTNG_SeamlessShopAndBookService#RetrieveReservations" style="document"/>
+      <wsdl:input>
+        <soap11:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap11:body use="literal"/>
+      </wsdl:output>
+      <wsdl:fault name="HDE_ErrorRS">
+        <soap11:body use="literal"/>
+      </wsdl:fault>
+    </wsdl:operation>-->
+  </wsdl:binding>
+  
+  <!-- Binding for Soap 1.2 -->
+  <wsdl:binding name="SeamlessShopAndBookPortBinding_SOAP12" type="tns:SeamlessShopAndBook">
+    <wsp:PolicyReference URI="#Shopping_policy"/>
+    <soap12:binding transport="http://schemas.xmlsoap.org/soap/http"/>
+    
+    <wsdl:operation name="CheckAvailability">
+      <soap12:operation soapAction="http://htng.org/2010A/HTNG_SeamlessShopAndBookService#CheckAvailability" style="document"/>
+      <wsdl:input name="HDE_HotelAvailRQ">
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="HDE_HotelAvailRS">
+        <soap12:body use="literal"/>
+      </wsdl:output>
+      <wsdl:fault name="HDE_ErrorRS">
+        <soap12:body use="literal"/>
+      </wsdl:fault>
+    </wsdl:operation>
+
+    <wsdl:operation name="ProcessReservationRequest">
+      <soap12:operation soapAction="http://htng.org/2010A/HTNG_SeamlessShopAndBookService#ProcessReservationRequest" style="document"/>
+      <wsdl:input name="HDE_HotelResRQ">
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="HDE_HotelResRS">
+        <soap12:body use="literal"/>
+      </wsdl:output>
+      <wsdl:fault name="HDE_ErrorRS">
+        <soap12:body use="literal"/>
+      </wsdl:fault>
+    </wsdl:operation>
+    
+    <wsdl:operation name="ProcessCancelRequest">
+      <soap12:operation soapAction="http://htng.org/2010A/HTNG_SeamlessShopAndBookService#ProcessCancelRequest" style="document"/>
+      <wsdl:input name="HDE_CancelRQ">
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="HDE_CancelRS">
+        <soap12:body use="literal"/>
+      </wsdl:output>
+      <wsdl:fault name="HDE_ErrorRS">
+        <soap12:body use="literal"/>
+      </wsdl:fault>
+    </wsdl:operation>
+
+    <!--<wsdl:operation name="RetrieveReservations">
+      <soap12:operation soapAction="http://htng.org/2010A/HTNG_SeamlessShopAndBookService#RetrieveReservations" style="document"/>
+      <wsdl:input>
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal"/>
+      </wsdl:output>
+      <wsdl:fault name="HDE_ErrorRS">
+        <soap12:body use="literal"/>
+      </wsdl:fault>
+    </wsdl:operation>-->
+  </wsdl:binding>
+  
+  <!-- Service -->
+  <wsdl:service name="HTNG_SeamlessShopAndBookService">
+    <wsdl:port name="SeamlessShopAndBook_SOAP11" binding="tns:SeamlessShopAndBookPortBinding_SOAP11"/>
+    <wsdl:port name="SeamlessShopAndBook_SOAP12" binding="tns:SeamlessShopAndBookPortBinding_SOAP12"/>  
+  </wsdl:service>
+</wsdl:definitions>
